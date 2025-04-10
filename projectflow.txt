@@ -1,0 +1,11 @@
+Create git repo and clone in local
+create mycode.py and add code to it.
+Do git add commit push before innitializing DVC
+#pip install DVC
+now we do "dvc init"
+create a folder "mkdir S3"
+Now we do  "dvc remote add -d myremote s3"
+remove data folder from git and then do commit
+Next --> "dvc add data/"
+Next --> git add data.dvc .gitignore
+Next --> "dvc commit" and then "dvc push"
