@@ -9,3 +9,4 @@ remove data folder from git and then do commit
 Next --> "dvc add data/"
 Next --> git add data.dvc .gitignore
 Next --> "dvc commit" and then "dvc push"
+Do changes in mycode
