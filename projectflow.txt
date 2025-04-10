@@ -10,3 +10,6 @@ Next --> "dvc add data/"
 Next --> git add data.dvc .gitignore
 Next --> "dvc commit" and then "dvc push"
 Do changes in mycode
+git and then do commit
+Check "dvc status"
+Next --> "dvc commit" and then "dvc push"
