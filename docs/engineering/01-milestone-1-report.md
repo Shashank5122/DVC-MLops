@@ -1,7 +1,7 @@
 # Milestone 1 report — app + database + backend + frontend + brand onboarding
 
 **Date:** 17 Oct 2026
-**Branch:** `arena/135d041a-dvc-mlops`
+**Branch:** `arena/135d041a-dvc-mlops` (pushed to `origin`; CI run `39019593970` green)
 **Status:** implemented, gates run, results recorded below. **Stopped here for founder review** —
 M2 has not been started, per instruction.
 **Compliance status:** unchanged. No external provider call was made, no money was spent, no
@@ -165,6 +165,8 @@ PostgreSQL server exist in this sandbox** — see §4.1.
 | Migration on a real DB | `alembic upgrade head` (SQLite file) | Applied `0001` → 4 tables created; verified again by `test_upgrade_head_creates_every_model_table` (table + column parity with the models, both composite uniques present, no global unique on slug/domain, `workspace_id` indexed on all three tenant tables) and `test_downgrade_to_base_removes_everything` (clean reverse to zero tables) |
 | Dependency install | `pip install -r requirements-dev.txt`; `npm install` | 41 Python packages (FastAPI 0.143.3, SQLAlchemy 2.0.55, Pydantic 2.14.1, Alembic 1.20.0); 30 npm packages (Next 16.4.2, React 19.3.1) |
 | Live HTTP checks | `curl` against both running servers | All 11 rows in §1.2 |
+| CI on GitHub Actions | push → run `39019593970` (commit `7a03639`) | **completed / success**, 3 jobs, 39 s. All steps `success`, including `Alembic upgrade head` and `Tests against PostgreSQL` on a `postgres:16-alpine` service. Raw logs not retrievable from this sandbox — see §4.1. |
+| Production config guard | `Settings(environment="production", provider_calls_enabled=True)` | **Refused** with `ValueError` locally, and asserted again by the CI step `Verify production config refuses provider calls` |
 
 **Security-boundary tests that ran (not just feature tests):**
 * `test_tenancy_isolation.py` — missing key → 401; wrong key → 401 with a message identical to the
@@ -201,16 +203,22 @@ passed" is only meaningful if the tests were capable of failing:
 
 ## 4. Remaining limitations
 
-### 4.1 Could not be executed in this environment — stated plainly
-1. **Docker was never run.** There is no Docker daemon in this sandbox. `docker-compose.yml`, both
-   `Dockerfile`s and the migration-at-startup command are written and YAML-validated, and the
-   backend's SQLite path is proven, but **the container build and the PostgreSQL path have not been
-   executed by me**. They must be run on a machine with Docker before being treated as verified.
-2. **PostgreSQL was never queried.** No server exists here. The postgres-marked migration test is
-   skipped locally; the `backend-postgres` CI job is written but **has not run** (no push to GitHub
-   was made in this session, so no CI execution exists to point at).
-3. **CI has not executed.** `.github/workflows/ci.yml` is committed but unproven until it runs on a
-   push.
+### 4.1 Environment limits — what could not run here, and what CI has since closed
+
+This sandbox has **no Docker daemon and no PostgreSQL server**. Three limitations were recorded when
+the milestone was built; the branch was then pushed to `origin` and CI ran.
+
+| # | Limitation at build time | Status now |
+| --- | --- | --- |
+| 4.1.1 | **Docker was never run.** `docker-compose.yml`, both `Dockerfile`s and the migrate-before-serve command are written and YAML-validated, but no image was built and no container started here. | **STILL OPEN.** CI does not build the images either. `docker compose up --build` must be run once on a machine with Docker before the container path is treated as verified. |
+| 4.1.2 | **PostgreSQL was never queried.** The postgres-marked migration test is skipped locally. | **CLOSED by CI.** Job `backend (migrations on PostgreSQL 16)` ran against a `postgres:16-alpine` service container: `Initialize containers=success`, `Alembic upgrade head=success`, `Tests against PostgreSQL=success`. The full suite (including `test_migration_applies_to_postgres`) therefore passed on PostgreSQL, not just SQLite. |
+| 4.1.3 | **CI had not executed.** | **CLOSED.** Run `39019593970` on commit `7a03639`, push to `arena/135d041a-dvc-mlops`: **completed / success**, 39 s, all three jobs green. Every step reported `success`, including `Ruff lint`, `Ruff format check`, `Mypy (strict)`, `Tests (SQLite)`, `Verify production config refuses provider calls`, `TypeScript (strict)`, `Next build`, `npm ci`. |
+
+**Precision about the CI evidence.** Step-level conclusions were read from the GitHub API. The raw
+log text could **not** be retrieved from this sandbox (the Actions log host
+`results-receiver.actions.githubusercontent.com` is outside the permitted egress list), so this report
+does **not** quote CI's pytest counts. The claim is exactly: every step in all three jobs returned
+`success`. The quoted counts in §3 are from local execution here.
 
 ### 4.2 Scope limitations (deliberate, M1)
 4. **No measurement capability at all.** No observations, query registry, evidence, extraction
@@ -286,9 +294,9 @@ passed" is only meaningful if the tests were capable of failing:
    key acceptable for the first real pilot workspace, or must per-user auth move into M2? (b) Is the
    ADR-12 dependency floor right, or do you want ESLint and Playwright added before more UI exists?
    (c) Confirm the two provider denials stay hard-coded in the denylist.
-2. **Run the Docker path on a machine with Docker** (`docker compose up --build`) and let CI run on
-   push. That closes limitations 4.1.1–4.1.3, which are the only claims in this report I could not
-   verify myself. ~20 minutes, $0.
+2. **Run the Docker path once on a machine with Docker** (`cp .env.example .env && docker compose up
+   --build`). CI and the PostgreSQL migration path are now verified (run `39019593970`), so this is
+   the **only** remaining unverified claim in this report — limitation 4.1.1. ~20 minutes, $0.
 3. **Then, and only then, the first M2 slice:** the query registry alone — one table for commercial
    queries (query text, intent, language, region, hash, registry version, frozen with a SHA-256
    manifest), its migration, its CRUD, and its UI. Deterministic ingestion from the mock provider
