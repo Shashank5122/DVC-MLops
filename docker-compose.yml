@@ -1,0 +1,71 @@
+# Reproducible local development stack: PostgreSQL 16 + FastAPI + Next.js.
+#
+#   docker compose up --build
+#   frontend  http://localhost:3000   (proxies /api/backend/* -> backend)
+#   backend   http://localhost:8000/api/v1/health   (docs at /docs)
+#   postgres  localhost:5432
+#
+# No external provider calls exist in this stack. SIGNALGEO_PROVIDER_CALLS_ENABLED stays false.
+
+name: signalgeo
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-signalgeo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-signalgeo}
+      POSTGRES_DB: ${POSTGRES_DB:-signalgeo}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-signalgeo} -d ${POSTGRES_DB:-signalgeo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SIGNALGEO_ENVIRONMENT: ${SIGNALGEO_ENVIRONMENT:-development}
+      SIGNALGEO_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-signalgeo}:${POSTGRES_PASSWORD:-signalgeo}@db:5432/${POSTGRES_DB:-signalgeo}
+      SIGNALGEO_LOG_JSON: "true"
+      SIGNALGEO_LOG_LEVEL: ${SIGNALGEO_LOG_LEVEL:-INFO}
+      SIGNALGEO_CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      # Hard kill-switch: leave false. Provider integrations require separate authorization.
+      SIGNALGEO_PROVIDER_CALLS_ENABLED: "false"
+      SIGNALGEO_PROVIDER_DENYLIST: gemini-grounding-google-search,perplexity-agent-api
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 25s
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_ORIGIN: http://backend:8000
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_ORIGIN: http://backend:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

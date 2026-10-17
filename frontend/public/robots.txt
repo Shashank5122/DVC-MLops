@@ -1,0 +1,3 @@
+# SignalGEO pilot console: internal tool, nothing to index.
+User-agent: *
+Disallow: /

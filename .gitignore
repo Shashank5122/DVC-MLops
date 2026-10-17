@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+frontend/next-env.d.ts
+npm-debug.log*
+
+# --- Local databases & secrets ---
+*.db
+*.sqlite3
+backend/signalgeo.db*
+.env
+.env.*
+!.env.example
+!backend/.env.example
+!frontend/.env.example
+
+# --- Editors / OS ---
+.DS_Store
+.idea/
+.vscode/

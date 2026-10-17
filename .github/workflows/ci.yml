@@ -1,0 +1,105 @@
+# CI: lint, strict types, tests, migrations, frontend typecheck and build.
+# Postgres jobs run against a real server; SQLite jobs run everywhere.
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  backend:
+    name: backend (lint · types · tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format check
+        run: ruff format --check .
+      - name: Mypy (strict)
+        run: mypy
+      - name: Tests (SQLite)
+        run: pytest -q
+      - name: Verify production config refuses provider calls
+        run: |
+          python - <<'PY'
+          from app.core.config import Settings
+          try:
+              Settings(environment="production", provider_calls_enabled=True,
+                       database_url="postgresql+psycopg://u:p@localhost/db")
+          except ValueError as exc:
+              print("OK: refused ->", exc)
+          else:
+              raise SystemExit("FAIL: production accepted provider_calls_enabled=true")
+          PY
+
+  backend-postgres:
+    name: backend (migrations on PostgreSQL 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: signalgeo
+          POSTGRES_PASSWORD: signalgeo
+          POSTGRES_DB: signalgeo_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U signalgeo"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Alembic upgrade head
+        env:
+          SIGNALGEO_DATABASE_URL: postgresql+psycopg://signalgeo:signalgeo@localhost:5432/signalgeo_test
+        run: alembic upgrade head
+      - name: Tests against PostgreSQL
+        env:
+          SIGNALGEO_DATABASE_URL: postgresql+psycopg://signalgeo:signalgeo@localhost:5432/signalgeo_test
+          SIGNALGEO_TEST_POSTGRES_URL: postgresql+psycopg://signalgeo:signalgeo@localhost:5432/signalgeo_test
+        run: pytest -q
+
+  frontend:
+    name: frontend (types · build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - name: TypeScript (strict)
+        run: npx --no-install tsc --noEmit
+      - name: Next build
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

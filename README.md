@@ -14,19 +14,29 @@ search engines and AI answer systems (SEO / AEO / GEO / AI-search visibility int
 | 1 | Market research & problem validation | **v2 complete** — 7 founder-required corrections actioned; **APPROVED WITH CHANGES 16 Oct 2026** |
 | 1a | Stage 1 — customer & business validation | **CONDITIONALLY APPROVED 16 Oct 2026.** Operational readiness memo issued: 3 founder-time scenarios (20/30/40 h + 52 h), corrected measurement arithmetic, $0-tooling stack, revised cash request **$40** (cap ₹38,760 unchanged). **30-founder-hour baseline adopted provisionally** (`validation/05-stage1-30-hour-plan.md`): 3 diagnostics, 36 manual captures, 25-response adjudication set, vendor-trial layer excluded. **NO-GO maintained on external activity, purchases, trial registrations, publishing and implementation** — pending S2 (API cap $40), O1/O2/O5 (list, message text, conversations), D1/G-Deliver, D5/G-Proposal |
 | 2 | Stage 2 — focused competitive intelligence | **Running (desk research only, authorised).** Matrix tranches 1–2 live: Peec agency pitch projects, Profound agency economics, Scrunch/Otterly pricing and trials, Gemini + Perplexity rate cards all verified 16 Oct 2026 |
-| 3 | Business model & unit economics | Not started |
-| 4 | Product definition & MVP | Not started |
-| 5 | AI visibility measurement engine | Not started |
-| 6 | AEO/GEO optimization intelligence | Not started |
-| 7 | Agent architecture & orchestration | Not started |
-| 8 | Production system architecture | Not started |
-| 9 | Implementation | Not started |
-| 10 | Customer acquisition & launch | Not started |
+| 2b | Provider-use compliance review | **COMPLETE 16 Oct 2026** — `docs/validation/08-compliance-decision-sheet.md`. Gemini Grounding with Google Search **PROHIBITED** for visibility monitoring on 5 independent grounds in the official Gemini API Additional Terms. Perplexity Agent API **BLOCKED** pending written clarification (gate W2). Gates W1/W2 opened; S2 spend **NOT granted** |
+| 3 | **MVP implementation — Milestone 1** | **COMPLETE 17 Oct 2026, STOPPED FOR FOUNDER REVIEW.** Working Next.js 16 + FastAPI + database app with brand onboarding, tenant isolation, append-only audit trail, migrations, provider permission gate. Gates run: **pytest 66 passed / 1 skipped** (postgres skip), **ruff clean**, **mypy --strict clean (41 files)**, **tsc --noEmit clean**, **next build clean (6 routes)**. `docs/engineering/01-milestone-1-report.md`. **Docker and PostgreSQL could NOT be executed in this sandbox** — see report §4.1 |
+| 3 | Business model & unit economics | **Complete** — `docs/phase-1/12-economics-v2.md` (authoritative) |
+| 4 | Product definition & MVP | **M1 implemented** — see Phase 3 row below |
+| 5 | AI visibility measurement engine | Not started (M2) — blocked on provider authorization for any automated source |
+| 6 | AEO/GEO optimization intelligence | Not started (M3) |
+| 7 | Agent architecture & orchestration | **Deliberately not built** — ADR-01/ADR-06: no agent framework; the workflow that needs one ends at a human approval gate |
+| 8 | Production system architecture | **M1 slice done** — `docs/engineering/00-architecture-decisions.md` (13 ADRs) |
+| 9 | Implementation | **Phase 3 started 17 Oct 2026 — Milestone 1 COMPLETE, awaiting founder review** |
+| 10 | Customer acquisition & launch | Not started — O2-b remains gated |
 
-**No application code exists in this repository yet.** That is deliberate: Phase 1 of the brief forbids it,
-the go/no-go decision has not been made, and the v2 recommendation (Stage 1) explicitly proposes **no
-production platform and no application code** — validation runs on a licensed measurement tool, a hashed
-prompt registry, an append-only file store and two human annotators.
+**Application code now exists (Milestone 1, 17 Oct 2026).** The founder authorized provider-independent
+software development on 17 Oct 2026 and instructed that M1 be built and then stopped for review. M1 is a
+working local app — `frontend/` (Next.js 16 + TypeScript), `backend/` (FastAPI + SQLAlchemy + Alembic),
+`docker-compose.yml` (PostgreSQL 16) — covering **brand onboarding only**. It contains **no measurement,
+no scoring, no reporting and no provider integration**: `SIGNALGEO_PROVIDER_CALLS_ENABLED=false` is a hard
+kill-switch, and `gemini-grounding-google-search` plus `perplexity-agent-api` are denied in configuration
+regardless of that switch. No external provider call was made and no money was spent.
+
+Commercial validation remains a **separate workstream** and is not advanced by M1. A working product is not
+evidence that anyone will pay for it; the Stage 1 gates in `docs/validation/01-founder-decision-checklist.md`
+are unchanged, and the compliance hold in `docs/validation/08-compliance-decision-sheet.md` still governs
+provider use.
 
 ## Repository layout
 
@@ -57,6 +67,38 @@ docs/validation/                           <- STAGE 1 + STAGE 2 EXECUTION (appro
                                               templates, binding rules (no contact made)
 docs/phase-2/                              <- focused competitive intelligence (desk research, authorised)
   01-competitor-capability-matrix.md       <- 16 capabilities x 9 targets, VERIFIED/NOT FOUND labels
+docs/engineering/                          <- PHASE 3 IMPLEMENTATION (M1 complete, under review)
+  00-architecture-decisions.md             <- 13 ADRs: single service, sync SQLAlchemy, PG+SQLite
+                                              strategy, pilot tenancy, provider kill-switch, adapter
+                                              contract, audit trail, error envelope, dependency floor
+  01-milestone-1-report.md                 <- M1 deliverable: files, verified behaviour, commands,
+                                              test/gate results AS EXECUTED, 17 limitations, security
+                                              and cost implications, next smallest step
+backend/                                   <- FastAPI + SQLAlchemy + Alembic (29 app files, 67 tests)
+  app/core/                                <- config (kill-switch, denylist), logging, errors, domain
+                                              helpers, tenancy resolution
+  app/db/                                  <- Base, models (Workspace/Brand/Competitor/AuditEvent),
+                                              session wiring
+  app/schemas/                             <- typed request/response models (extra="forbid")
+  app/services/                            <- brand + competitor operations, append-only audit
+  app/api/                                 <- health, workspaces, brands, competitors, providers,
+                                              audit routes
+  app/providers/                           <- adapter contract + permission registry + deterministic
+                                              mock. NO network I/O, NO Gemini/Perplexity adapter
+  alembic/versions/0001_initial_schema.py  <- initial migration (4 tables, composite uniques, FKs)
+  scripts/bootstrap_workspace.py           <- creates a workspace, prints its key exactly once
+  tests/                                   <- 67 tests incl. dedicated tenancy-isolation module
+frontend/                                  <- Next.js 16 App Router + TypeScript (strict)
+  app/                                     <- overview, setup, onboard, brand detail, providers, 404
+  components/                              <- TopBar, BrandTile, CompetitorTable, AuditTrail,
+                                              ProviderTable, ErrorNotice, Pill, PageHeader
+  lib/                                     <- typed API client (relative paths only), types,
+                                              workspace-key storage
+docker-compose.yml                         <- PostgreSQL 16 + backend + frontend, healthchecks
+Makefile                                   <- install / test / lint / typecheck / migrate / bootstrap
+                                              / dev-backend / dev-frontend / up / down
+.env.example                               <- documented local config incl. the provider policy block
+.github/workflows/ci.yml                   <- 3 jobs: backend gates, postgres migrations, frontend
 docs/phase-1/
   00-decision-memo.md                      <- START HERE (v2): A-I format + decisions D-1...D-6
   01-executive-research-summary.md         <- v2: correction banner + corrected sections 5-9
@@ -105,8 +147,17 @@ research; buy-before-build for monitoring; evidence-based measurement with no pl
 
 **Not authorised:** spending money · sending outreach or contacting customers · publishing anything · building
 or deploying a production platform · changing client websites · signing agreements or making financial
-commitments · Stage 2 engineering or later implementation phases. Each requires the matching gate in
+commitments · any external provider API call. Each requires the matching gate in
 `docs/validation/01-founder-decision-checklist.md`.
+
+**Added 17 Oct 2026 — implementation authority (provider-independent scope only):** Milestone-based software
+development is authorised: M1 app + database + backend + frontend + brand onboarding → M2 query registry,
+deterministic ingestion, observation storage, evaluation → M3 recommendations + human approval → M4 client-ready
+report, QA, docs, security review. **M5 provider integrations require separate permission.** Binding
+restrictions: do not use Gemini Grounding with Google Search for visibility monitoring; do not call the
+Perplexity API until written commercial permission is received; do not scrape or automate consumer AI
+interfaces; do not register trials, purchase software, incur API charges, contact prospects or publish
+anything. **M1 is complete and work has STOPPED for founder review — M2 must not start until M1 is reviewed.**
 
 **Founder hours are NOT yet confirmed** (condition 2): scenarios for **20 / 30 / 40 / 52 h** are prepared in
 `docs/validation/03-operational-readiness-memo.md` §1, with 30 h recommended as the defensible floor. Cash cap
@@ -121,7 +172,12 @@ Peec Agent; Profound AI Marketer/Agents writing into client CMSs; Scrunch/Siteco
 recommendations in-CMS), and GEO agencies were found to sell the same workstream from $997/month. v1 also used
 two inconsistent hour definitions in its economics and treated a single consumer-interface rerun as ground
 truth. Every defect, its evidence and its fix is recorded in **`docs/phase-1/11-correction-log.md`**, and v1 is
-superseded rather than silently rewritten. **Repository note:** the workspace was re-cloned on 16 Oct 2026 and its history squashed, so the intermediate commits (e5a828b, c6cfc22, 34d7e11, d0538a3) no longer exist in git; all current content is in commit bae95ed and the working tree is the source of truth.
+superseded rather than silently rewritten. **Repository note:** the sandbox has re-cloned this workspace repeatedly and its history has been reset more
+than once (commits e5a828b, c6cfc22, 34d7e11, d0538a3, ba95ed/be95ed, d2abb7c, 98a0fda and 76903d6 have each
+vanished at some point while the working tree survived). **Nothing in this repository should be described as
+"preserved in git history".** The working tree is the source of truth; superseded content is kept as a labelled
+file (see `docs/phase-1/11-correction-log.md`), not as a commit reference. As of 17 Oct 2026 the tree is
+branched from `34a2d98` with all Phase 1/2 documentation restored and the M1 codebase added.
 
 Two standing rules came out of it:
 1. **Competitive claims decay in weeks.** Any statement about a competitor's capabilities must come from vendor
